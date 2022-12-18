@@ -1,0 +1,130 @@
+#! /usr/bin/env bash
+# vim: filetype=sh syntax=sh
+
+set -euo pipefail
+shopt -s extglob  # Enable extended globbing
+
+readonly SQLITE_HEADER_STRING='SQLiteformat3'
+readonly SQLITE_DATABASE="files.db"
+readonly TABLE_NAME="files"
+readonly FILE_INSERT_CAPACITY=10  # Must be > 0
+readonly PROGRESS_SCALE=24
+
+FILES=()
+RECORDS_FILE=()
+RECORDS_SIZE=()
+FILES_ADDED_COUNT=0
+OLD_IFS="$IFS"
+
+function on_sigint()
+{
+  echo -e "\n\033[33mProcessing canceled\033[0m"
+
+  exit 0
+}
+
+trap on_sigint SIGINT
+
+IFS=$'\n'
+if [[ $@ ]]
+then
+  FILES=( ${@} )
+else
+  FILES=($(find "$PWD" -not -name "*${SQLITE_DATABASE}" -mindepth 1 -maxdepth 1))
+fi
+IFS="$OLD_IFS"
+
+if [[ ${#FILES[@]} -eq 0 ]]
+then
+  echo -e "\033[31mNo files\033[0m"
+
+  exit 1
+fi
+
+for f in "${FILES[@]}"
+do
+  _file_size=0
+
+  if [[ -e "$f" ]]
+  then
+    if [[ -f "$f" ]]
+    then
+      _file_size=$(wc -c < "$f")
+    fi
+
+    RECORDS_FILE+=("$f")
+    RECORDS_SIZE+=($_file_size)
+  fi
+done
+
+
+if [[ ! -e "$SQLITE_DATABASE" ]]
+then
+  sqlite3 "$SQLITE_DATABASE" << SQL
+BEGIN TRANSACTION;
+
+CREATE TABLE \`$TABLE_NAME\` (
+  \`id\`    INTEGER PRIMARY KEY
+  ,\`file\` TEXT UNIQUE NOT NULL
+  ,\`size\` INTEGER
+);
+
+CREATE INDEX \`i_files_file\` ON \`$TABLE_NAME\`(\`file\`);
+COMMIT;
+SQL
+elif [[ ! -f "$SQLITE_DATABASE" ]] || [[ "$SQLITE_HEADER_STRING" != $(od -An -cN15 "$SQLITE_DATABASE" | tr -d '[:space:]') ]]
+then
+  echo -e "\033[31mError:\033[0m ${SQLITE_DATABASE} is not an SQLite3 database"
+
+  exit 1
+fi
+
+while [[ $FILES_ADDED_COUNT -ne ${#RECORDS_FILE[@]} ]]
+do
+  _RECORD_FILE_SUBSET=("${RECORDS_FILE[@]:${FILES_ADDED_COUNT}:${FILE_INSERT_CAPACITY}}")
+  _RECORD_SIZE_SUBSET=("${RECORDS_SIZE[@]:${FILES_ADDED_COUNT}:${FILE_INSERT_CAPACITY}}")
+
+  _VALUES=$(printf '%s\n' "${_RECORD_FILE_SUBSET[@]}" | awk -v sizes="${_RECORD_SIZE_SUBSET[*]}" -f <(cat <<'AWK'
+BEGIN {
+  split(sizes, _sizes, " ")
+}
+{
+  print sep "(replace(\"" $0 "\", \"'\", \"\")," _sizes[NR] ")"; sep=","
+}
+AWK
+  ))
+
+  sqlite3 "$SQLITE_DATABASE" << SQL
+INSERT OR IGNORE INTO \`$TABLE_NAME\` (file, size)
+VALUES
+  $_VALUES
+;
+SQL
+
+  if [[ $? -eq 0 ]]
+  then
+    ((FILES_ADDED_COUNT += ${#_RECORD_FILE_SUBSET[@]}))
+  else
+    echo -e "\033[31mError inserting files into\033[0m ${SQLITE_DATABASE}"
+
+    exit 1
+  fi
+
+  progress="$(printf "%.0f" $(echo "${FILES_ADDED_COUNT} / ${#RECORDS_FILE[@]} * ${PROGRESS_SCALE}" | bc -l))"
+  percentage="$(printf "%.0f" $(echo "${progress} / ${PROGRESS_SCALE} * 100" | bc -l))"
+  steps_complete=$(printf "%${progress}s" "")
+  steps_remaining=$(printf "%$(($PROGRESS_SCALE - $progress))s" "")
+
+  for ((i=0; i < $progress; i++))
+  do
+    printf "\r\033[K\r%d %s%s" $FILES_ADDED_COUNT ${steps_complete// /$'\u2588'} ${steps_remaining// /$'\u2591'}
+  done
+done
+
+if [[ $? -eq 0 ]]
+then
+  echo -e "\r\033[K\r\033[32m${FILES_ADDED_COUNT} files\033[37m added to \033[33m${SQLITE_DATABASE}\033[0m"
+else
+  echo -e "\r\033[K\r\033[31mError:\033[0m couldn't create database"
+fi
+
