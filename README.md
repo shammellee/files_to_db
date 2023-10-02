@@ -8,11 +8,17 @@ exist.
 
 ```sh
 # Create the database and insert files
-$ files_to_db [<file>] [...]
+$ files_to_db [<options>] [<file>] [...]
 
 # Find the largest file
 sqlite3 files.db 'select file from files order by size desc limit 1'
 ```
+
+## Command Line Options
+
+Option                | Description
+--------------------- | ---------------------------------------------------
+`--phony-files`, `-p` | Add files that don't exist
 
 Upon calling `files_to_db`, a `files.db` SQLite 3 database file is created in
 the current directory. If no files are specified, all files in the current
