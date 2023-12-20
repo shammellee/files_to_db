@@ -6,7 +6,13 @@ set -euo pipefail
 cd "$FDB_TEST_DIRECTORY"
 
 readonly TEST_CASES=( $(ls "tests"/) )
-readonly FDB_TEST_FILES=( $(find "${FDB_TEST_DIRECTORY}/files" -mindepth 1 -maxdepth 1) )
+
+FDB_TEST_FILES=()
+
+for file in "${FDB_TEST_DIRECTORY}/files/"*
+do
+  FDB_TEST_FILES+=("$file")
+done
 
 FDB_TMP_DIRECTORY=
 
