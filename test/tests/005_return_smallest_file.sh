@@ -10,7 +10,7 @@ SELECT \`file\` FROM \`$FDB_DATABASE_TABLE\` ORDER BY \`size\` ASC LIMIT 1
 SQL
 )"
 
-if [[ ! "$result" =~ krishnamurti.txt$ ]]
+if [[ ! "$result" =~ empty_file.txt ]]
 then
   echo $result
 
