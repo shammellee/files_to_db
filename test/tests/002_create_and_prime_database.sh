@@ -5,7 +5,7 @@ set -euo pipefail
 
 readonly SQLITE_HEADER_STRING='SQLiteformat3'
 
-$FDB_COMMAND ${FDB_TEST_FILES[@]} > /dev/null
+$FDB_COMMAND "${FDB_TEST_FILES[@]}" > /dev/null
 
 if [[ ! -f "$FDB_DATABASE" ]] || [[ "$SQLITE_HEADER_STRING" != $(od -An -cN15 "$FDB_DATABASE" | tr -d '[:space:]') ]]
 then
