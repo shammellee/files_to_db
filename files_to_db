@@ -26,15 +26,18 @@ function on_sigint()
 
 trap on_sigint SIGINT
 
-case $1 in
-  --phony-files | -p)
-    PHONY_FILES=1
-    shift
-    ;;
+if [[ $@ ]]
+then
+  case $1 in
+    --phony-files | -p)
+      PHONY_FILES=1
+      shift
+      ;;
 
-  *)
-    ;;
-esac
+    *)
+      ;;
+  esac
+fi
 
 IFS=$'\n'
 if [[ $@ ]]
