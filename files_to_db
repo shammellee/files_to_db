@@ -112,7 +112,7 @@ BEGIN {
   split(sizes, _sizes, " ")
 }
 {
-  print sep "(replace('" $0 "', quote(''), '')," _sizes[NR] ")"; sep=","
+  gsub(/'/, "''"); print sep "('" $0 "', " _sizes[NR] ")"; sep=",";
 }
 AWK
   ))
