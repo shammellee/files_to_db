@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 # vim: filetype=sh syntax=sh
 
-set -uo pipefail
+set -euo pipefail
 
 cd "$FDB_TEST_DIRECTORY"
 
