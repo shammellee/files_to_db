@@ -44,7 +44,7 @@ if [[ $@ ]]
 then
   FILES=( ${@} )
 else
-  FILES=($(find "$PWD"/ -not -name "*${SQLITE_DATABASE}" -mindepth 1 -maxdepth 1))
+  FILES=($(find "$PWD" -not -name "*${SQLITE_DATABASE}" -mindepth 1 -maxdepth 1))
 fi
 IFS="$OLD_IFS"
 
