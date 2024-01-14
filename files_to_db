@@ -44,7 +44,7 @@ if [[ $@ ]]
 then
   FILES=( ${@} )
 else
-  FILES=($(find "$PWD" -not -name "*${SQLITE_DATABASE}" -mindepth 1 -maxdepth 1))
+  FILES=($(find "$PWD" -type f -not -name "*${SQLITE_DATABASE}" -mindepth 1 -maxdepth 1))
 fi
 IFS="$OLD_IFS"
 
@@ -69,10 +69,9 @@ do
       if [[ -f "$f" ]]
       then
         _file_size=$(wc -c < "$f")
+        RECORDS_FILE+=("$f")
+        RECORDS_SIZE+=($_file_size)
       fi
-
-      RECORDS_FILE+=("$f")
-      RECORDS_SIZE+=($_file_size)
     else
       echo -e "\033[33mFile doesn't exist, skipping:\033[0m ${f}"
       continue
